@@ -1,7 +1,6 @@
 plugins {
-    id 'net.neoforged.moddev' version "${moddevgradle_version}" apply false
+    id 'net.neoforged.moddev'
 }
-apply plugin: 'net.neoforged.moddev'
 
 neoForge {
     version = "${neoforge_version}"

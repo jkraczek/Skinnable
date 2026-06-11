@@ -4,6 +4,24 @@ pluginManagement {
         maven { url = 'https://maven.neoforged.net/releases' }
         gradlePluginPortal()
     }
+
+    // Fabric Loom SNAPSHOTs don't publish a Gradle plugin-marker artifact,
+    // so we map the plugin ID directly to the implementation artifact.
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == 'dev.fabricmc.loom') {
+                useModule("net.fabricmc:fabric-loom:${requested.version}")
+            }
+        }
+    }
+
+    // Declare plugin versions here — gradle.properties values ARE available
+    // in this block (unlike in subproject build.gradle plugins {} blocks).
+    plugins {
+        id 'dev.fabricmc.loom'     version "${loom_version}"       apply false
+        id 'net.neoforged.moddev'  version "${moddevgradle_version}" apply false
+    }
 }
+
 rootProject.name = 'Skinnable'
 include('common', 'fabric', 'neoforge')
