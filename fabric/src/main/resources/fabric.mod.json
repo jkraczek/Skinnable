@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "skinnable",
+  "version": "${version}",
+  "name": "Skinnable",
+  "description": "Disguise command blocks and mob spawners as any vanilla block",
+  "authors": [],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.skinnable.fabric.SkinnableFabric"],
+    "client": ["com.skinnable.fabric.SkinnableFabricClient"]
+  },
+  "mixins": [],
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "fabric-api": "*",
+    "minecraft": "~26.1.2"
+  }
+}

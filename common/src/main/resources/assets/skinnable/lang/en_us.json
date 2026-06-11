@@ -1,0 +1,18 @@
+{
+  "block.skinnable.skinnable_command_block": "Skinnable Command Block",
+  "block.skinnable.skinnable_spawner": "Skinnable Spawner",
+  "item.skinnable.skinnable_command_block": "Skinnable Command Block",
+  "item.skinnable.skinnable_spawner": "Skinnable Spawner",
+  "itemGroup.skinnable": "Skinnable",
+  "screen.skinnable.spawner_config": "Skinnable Spawner Configuration",
+  "screen.skinnable.search_entities": "Search entities...",
+  "screen.skinnable.selected_mobs": "Selected Mobs",
+  "screen.skinnable.spawn_settings": "Spawn Settings",
+  "screen.skinnable.min_delay": "Min Delay:",
+  "screen.skinnable.max_delay": "Max Delay:",
+  "screen.skinnable.spawn_count": "Spawn Count:",
+  "screen.skinnable.max_nearby": "Max Nearby:",
+  "screen.skinnable.player_range": "Player Range:",
+  "screen.skinnable.save": "Save",
+  "screen.skinnable.cancel": "Cancel"
+}

@@ -1,0 +1,6 @@
+{
+  "variants": {
+    "powered=false": { "model": "skinnable:block/invisible" },
+    "powered=true": { "model": "skinnable:block/invisible" }
+  }
+}
