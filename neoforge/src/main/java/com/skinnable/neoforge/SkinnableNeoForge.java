@@ -11,10 +11,8 @@ import com.skinnable.network.packet.S2COpenSpawnerScreenPacket;
 import com.skinnable.neoforge.platform.NeoForgePlatformHelper;
 import com.skinnable.platform.Services;
 import com.skinnable.registry.ModBlockEntityTypes;
-import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
@@ -29,10 +27,7 @@ public class SkinnableNeoForge {
         }
 
         modBus.addListener(this::registerPackets);
-
-        if (FMLEnvironment.dist == Dist.CLIENT) {
-            modBus.addListener(this::registerRenderers);
-        }
+        modBus.addListener(this::registerRenderers);
     }
 
     private void registerPackets(RegisterPayloadHandlersEvent event) {

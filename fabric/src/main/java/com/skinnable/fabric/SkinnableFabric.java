@@ -15,9 +15,9 @@ public class SkinnableFabric implements ModInitializer {
     public void onInitialize() {
         Skinnable.init();
 
-        PayloadTypeRegistry.playC2S().register(C2SSetCamouflagePacket.TYPE, C2SSetCamouflagePacket.STREAM_CODEC);
-        PayloadTypeRegistry.playC2S().register(C2SUpdateSpawnerPacket.TYPE, C2SUpdateSpawnerPacket.STREAM_CODEC);
-        PayloadTypeRegistry.playS2C().register(S2COpenSpawnerScreenPacket.TYPE, S2COpenSpawnerScreenPacket.STREAM_CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(C2SSetCamouflagePacket.TYPE, C2SSetCamouflagePacket.STREAM_CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(C2SUpdateSpawnerPacket.TYPE, C2SUpdateSpawnerPacket.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(S2COpenSpawnerScreenPacket.TYPE, S2COpenSpawnerScreenPacket.STREAM_CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(C2SSetCamouflagePacket.TYPE, (packet, context) ->
             context.server().execute(() -> {

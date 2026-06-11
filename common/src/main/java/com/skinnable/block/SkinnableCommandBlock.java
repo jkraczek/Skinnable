@@ -1,9 +1,9 @@
 package com.skinnable.block;
 
+import com.mojang.serialization.MapCodec;
 import com.skinnable.blockentity.SkinnableCommandBlockEntity;
 import com.skinnable.registry.ModBlockEntityTypes;
 import net.minecraft.core.BlockPos;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
@@ -25,11 +25,17 @@ import org.jetbrains.annotations.Nullable;
 
 public class SkinnableCommandBlock extends BaseEntityBlock {
 
+    public static final MapCodec<SkinnableCommandBlock> CODEC = simpleCodec(SkinnableCommandBlock::new);
     public static final BooleanProperty POWERED = BlockStateProperties.POWERED;
 
     public SkinnableCommandBlock(BlockBehaviour.Properties properties) {
         super(properties);
         registerDefaultState(stateDefinition.any().setValue(POWERED, false));
+    }
+
+    @Override
+    protected MapCodec<? extends BaseEntityBlock> codec() {
+        return CODEC;
     }
 
     @Override
@@ -39,7 +45,7 @@ public class SkinnableCommandBlock extends BaseEntityBlock {
 
     @Override
     public RenderShape getRenderShape(BlockState state) {
-        return RenderShape.ENTITYBLOCK_ANIMATED;
+        return RenderShape.INVISIBLE;
     }
 
     @Override
@@ -49,7 +55,7 @@ public class SkinnableCommandBlock extends BaseEntityBlock {
 
     @Override
     public @Nullable <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> blockEntityType) {
-        if (level.isClientSide) return null;
+        if (level.isClientSide()) return null;
         return createTickerHelper(blockEntityType, ModBlockEntityTypes.SKINNABLE_COMMAND_BLOCK.get(),
                 SkinnableCommandBlockEntity::serverTick);
     }
@@ -57,7 +63,7 @@ public class SkinnableCommandBlock extends BaseEntityBlock {
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (!player.getAbilities().instabuild) return InteractionResult.PASS;
-        if (level.isClientSide) return InteractionResult.SUCCESS;
+        if (level.isClientSide()) return InteractionResult.SUCCESS;
 
         BlockEntity be = level.getBlockEntity(pos);
         if (!(be instanceof SkinnableCommandBlockEntity cmdBe)) return InteractionResult.PASS;
@@ -69,15 +75,11 @@ public class SkinnableCommandBlock extends BaseEntityBlock {
             return InteractionResult.SUCCESS;
         }
 
-        if (player instanceof ServerPlayer sp) {
-            sp.openCommandBlock(cmdBe.getCommandBlock());
-        }
         return InteractionResult.SUCCESS;
     }
 
-    @Override
     protected void neighborChanged(BlockState state, Level level, BlockPos pos, net.minecraft.world.level.block.Block block, net.minecraft.core.BlockPos fromPos, boolean isMoving) {
-        if (level.isClientSide) return;
+        if (level.isClientSide()) return;
         BlockEntity be = level.getBlockEntity(pos);
         if (!(be instanceof SkinnableCommandBlockEntity cmdBe)) return;
 
@@ -96,13 +98,12 @@ public class SkinnableCommandBlock extends BaseEntityBlock {
     }
 
     @Override
-    public void playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+    public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
         if (!player.getAbilities().instabuild) {
-            // Restore the block - non-creative players cannot break it
             level.setBlock(pos, state, 3);
-            return;
+            return state;
         }
-        super.playerWillDestroy(level, pos, state, player);
+        return super.playerWillDestroy(level, pos, state, player);
     }
 
     @Override

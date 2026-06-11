@@ -7,7 +7,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.List;
 
@@ -19,10 +19,10 @@ public record C2SUpdateSpawnerPacket(
 ) implements CustomPacketPayload {
 
     public static final Type<C2SUpdateSpawnerPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(Skinnable.MOD_ID, "update_spawner"));
+            new Type<>(Identifier.fromNamespaceAndPath(Skinnable.MOD_ID, "update_spawner"));
 
     private static final StreamCodec<FriendlyByteBuf, SpawnEntry> ENTRY_CODEC = StreamCodec.composite(
-            ResourceLocation.STREAM_CODEC, SpawnEntry::entityType,
+            Identifier.STREAM_CODEC, SpawnEntry::entityType,
             ByteBufCodecs.VAR_INT, SpawnEntry::weight,
             SpawnEntry::new
     );

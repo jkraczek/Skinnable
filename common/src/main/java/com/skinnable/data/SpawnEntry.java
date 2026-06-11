@@ -1,5 +1,5 @@
 package com.skinnable.data;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
-public record SpawnEntry(ResourceLocation entityType, int weight) {}
+public record SpawnEntry(Identifier entityType, int weight) {}

@@ -3,16 +3,20 @@ package com.skinnable.client.screen;
 import com.skinnable.data.SpawnEntry;
 import com.skinnable.network.packet.C2SUpdateSpawnerPacket;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSelectionList;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
 
 import java.util.ArrayList;
@@ -76,35 +80,30 @@ public class SkinnableSpawnerScreen extends Screen {
         minDelayBox = new EditBox(font, settingBoxX, settingY, settingBoxW, 20,
                 Component.translatable("screen.skinnable.min_delay"));
         minDelayBox.setValue("200");
-        minDelayBox.setFilter(s -> s.matches("\\d*"));
         addRenderableWidget(minDelayBox);
         settingY += 25;
 
         maxDelayBox = new EditBox(font, settingBoxX, settingY, settingBoxW, 20,
                 Component.translatable("screen.skinnable.max_delay"));
         maxDelayBox.setValue("800");
-        maxDelayBox.setFilter(s -> s.matches("\\d*"));
         addRenderableWidget(maxDelayBox);
         settingY += 25;
 
         spawnCountBox = new EditBox(font, settingBoxX, settingY, settingBoxW, 20,
                 Component.translatable("screen.skinnable.spawn_count"));
         spawnCountBox.setValue("4");
-        spawnCountBox.setFilter(s -> s.matches("\\d*"));
         addRenderableWidget(spawnCountBox);
         settingY += 25;
 
         maxNearbyBox = new EditBox(font, settingBoxX, settingY, settingBoxW, 20,
                 Component.translatable("screen.skinnable.max_nearby"));
         maxNearbyBox.setValue("6");
-        maxNearbyBox.setFilter(s -> s.matches("\\d*"));
         addRenderableWidget(maxNearbyBox);
         settingY += 25;
 
         playerRangeBox = new EditBox(font, settingBoxX, settingY, settingBoxW, 20,
                 Component.translatable("screen.skinnable.player_range"));
         playerRangeBox.setValue("16");
-        playerRangeBox.setFilter(s -> s.matches("\\d*"));
         addRenderableWidget(playerRangeBox);
 
         // Save button
@@ -151,14 +150,14 @@ public class SkinnableSpawnerScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics, mouseX, mouseY, partialTick);
-        super.render(graphics, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor extractor, int mouseX, int mouseY, float partialTick) {
+        extractBackground(extractor, mouseX, mouseY, partialTick);
+        super.extractRenderState(extractor, mouseX, mouseY, partialTick);
 
-        graphics.drawString(font, title, width / 2 - font.width(title) / 2, 8, 0xFFFFFF);
-        graphics.drawString(font, "Available Entities:", 5, 17, 0xAAAAAA);
-        graphics.drawString(font, Component.translatable("screen.skinnable.selected_mobs"), 165, 17, 0xAAAAAA);
-        graphics.drawString(font, Component.translatable("screen.skinnable.spawn_settings"), 335, 17, 0xAAAAAA);
+        extractor.text(font, title, width / 2 - font.width(title) / 2, 8, 0xFFFFFF);
+        extractor.text(font, "Available Entities:", 5, 17, 0xAAAAAA);
+        extractor.text(font, Component.translatable("screen.skinnable.selected_mobs"), 165, 17, 0xAAAAAA);
+        extractor.text(font, Component.translatable("screen.skinnable.spawn_settings"), 335, 17, 0xAAAAAA);
 
         int rightX = 335;
         int settingY = 25;
@@ -167,19 +166,19 @@ public class SkinnableSpawnerScreen extends Screen {
             "Min Delay:", "Max Delay:", "Spawn Count:", "Max Nearby:", "Player Range:"
         };
         for (String label : labels) {
-            graphics.drawString(font, label, rightX, settingY + 5, 0xFFFFFF);
+            extractor.text(font, label, rightX, settingY + 5, 0xFFFFFF);
             settingY += step;
         }
 
-        entityListWidget.render(graphics, mouseX, mouseY, partialTick);
-        selectedEntriesWidget.render(graphics, mouseX, mouseY, partialTick);
+        entityListWidget.extractRenderState(extractor, mouseX, mouseY, partialTick);
+        selectedEntriesWidget.extractRenderState(extractor, mouseX, mouseY, partialTick);
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (entityListWidget.mouseClicked(mouseX, mouseY, button)) return true;
-        if (selectedEntriesWidget.mouseClicked(mouseX, mouseY, button)) return true;
-        return super.mouseClicked(mouseX, mouseY, button);
+    public boolean mouseClicked(MouseButtonEvent event, boolean focused) {
+        if (entityListWidget.mouseClicked(event, focused)) return true;
+        if (selectedEntriesWidget.mouseClicked(event, focused)) return true;
+        return super.mouseClicked(event, focused);
     }
 
     @Override
@@ -196,7 +195,7 @@ public class SkinnableSpawnerScreen extends Screen {
     @Override
     public boolean isPauseScreen() { return false; }
 
-    private void addToSelected(ResourceLocation entityTypeId, String displayName) {
+    private void addToSelected(Identifier entityTypeId, String displayName) {
         boolean alreadyAdded = selectedEntries.stream().anyMatch(se -> se.entityTypeId.equals(entityTypeId));
         if (!alreadyAdded) {
             selectedEntries.add(new SelectedEntry(entityTypeId, displayName, this));
@@ -232,7 +231,7 @@ public class SkinnableSpawnerScreen extends Screen {
         private void refreshEntries(String filter) {
             clearEntries();
             for (EntityType<?> et : allEntities) {
-                ResourceLocation key = BuiltInRegistries.ENTITY_TYPE.getKey(et);
+                Identifier key = BuiltInRegistries.ENTITY_TYPE.getKey(et);
                 if (key == null) continue;
                 String name = key.toString();
                 if (filter.isEmpty() || name.contains(filter)) {
@@ -247,36 +246,38 @@ public class SkinnableSpawnerScreen extends Screen {
         @Override
         protected int scrollBarX() { return getX() + width - 6; }
 
+        @Override
+        protected void updateWidgetNarration(NarrationElementOutput narrationElementOutput) {}
+
         class EntityEntry extends AbstractSelectionList.Entry<EntityEntry> {
             private final EntityType<?> entityType;
-            private final ResourceLocation key;
+            private final Identifier key;
             private final String displayName;
 
-            EntityEntry(EntityType<?> entityType, ResourceLocation key) {
+            EntityEntry(EntityType<?> entityType, Identifier key) {
                 this.entityType = entityType;
                 this.key = key;
                 this.displayName = key.getPath().replace('_', ' ');
             }
 
             @Override
-            public void render(GuiGraphics graphics, int index, int top, int left, int width, int height,
-                               int mouseX, int mouseY, boolean hovered, float partialTick) {
-                if (hovered) {
-                    graphics.fill(left, top, left + width, top + height, 0x44FFFFFF);
+            public void extractContent(GuiGraphicsExtractor extractor, int mouseX, int mouseY,
+                                       boolean focused, float partialTick) {
+                if (isMouseOver(mouseX, mouseY)) {
+                    extractor.fill(getContentX(), getContentY(), getContentRight(), getContentBottom(), 0x44FFFFFF);
                 }
-                graphics.drawString(SkinnableSpawnerScreen.this.font, displayName, left + 3, top + 4, 0xFFFFFF);
+                extractor.text(SkinnableSpawnerScreen.this.font, displayName, getContentX() + 3, getContentY() + 4, 0xFFFFFF);
             }
 
             @Override
-            public boolean mouseClicked(double mouseX, double mouseY, int button) {
-                if (button == 0) {
+            public boolean mouseClicked(MouseButtonEvent event, boolean focused) {
+                if (event.button() == 0) {
                     SkinnableSpawnerScreen.this.addToSelected(key, displayName);
                     return true;
                 }
                 return false;
             }
 
-            @Override
             public Component getNarration() { return Component.literal(displayName); }
         }
     }
@@ -302,6 +303,9 @@ public class SkinnableSpawnerScreen extends Screen {
         @Override
         protected int scrollBarX() { return getX() + width - 6; }
 
+        @Override
+        protected void updateWidgetNarration(NarrationElementOutput narrationElementOutput) {}
+
         class Row extends AbstractSelectionList.Entry<Row> {
             private final SelectedEntry entry;
             private final Button removeBtn;
@@ -314,55 +318,57 @@ public class SkinnableSpawnerScreen extends Screen {
             }
 
             @Override
-            public void render(GuiGraphics graphics, int index, int top, int left, int width, int height,
-                               int mouseX, int mouseY, boolean hovered, float partialTick) {
-                graphics.drawString(SkinnableSpawnerScreen.this.font, entry.displayName, left + 3, top + 5, 0xFFFFFF);
-                graphics.drawString(SkinnableSpawnerScreen.this.font, "W:", left + width - 80, top + 5, 0xAAAAAA);
+            public void extractContent(GuiGraphicsExtractor extractor, int mouseX, int mouseY,
+                                       boolean focused, float partialTick) {
+                int left = getContentX();
+                int top = getContentY();
+                int w = getContentWidth();
 
-                entry.weightBox.setX(left + width - 65);
+                extractor.text(SkinnableSpawnerScreen.this.font, entry.displayName, left + 3, top + 5, 0xFFFFFF);
+                extractor.text(SkinnableSpawnerScreen.this.font, "W:", left + w - 80, top + 5, 0xAAAAAA);
+
+                entry.weightBox.setX(left + w - 65);
                 entry.weightBox.setY(top + 2);
-                entry.weightBox.render(graphics, mouseX, mouseY, partialTick);
+                entry.weightBox.extractRenderState(extractor, mouseX, mouseY, partialTick);
 
-                removeBtn.setX(left + width - 22);
+                removeBtn.setX(left + w - 22);
                 removeBtn.setY(top + 2);
-                removeBtn.render(graphics, mouseX, mouseY, partialTick);
+                removeBtn.extractRenderState(extractor, mouseX, mouseY, partialTick);
             }
 
             @Override
-            public boolean mouseClicked(double mouseX, double mouseY, int button) {
-                if (removeBtn.mouseClicked(mouseX, mouseY, button)) return true;
-                if (entry.weightBox.mouseClicked(mouseX, mouseY, button)) return true;
+            public boolean mouseClicked(MouseButtonEvent event, boolean focused) {
+                if (removeBtn.mouseClicked(event, focused)) return true;
+                if (entry.weightBox.mouseClicked(event, focused)) return true;
                 return false;
             }
 
             @Override
-            public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-                return entry.weightBox.keyPressed(keyCode, scanCode, modifiers);
+            public boolean keyPressed(KeyEvent event) {
+                return entry.weightBox.keyPressed(event);
             }
 
             @Override
-            public boolean charTyped(char codePoint, int modifiers) {
-                return entry.weightBox.charTyped(codePoint, modifiers);
+            public boolean charTyped(CharacterEvent event) {
+                return entry.weightBox.charTyped(event);
             }
 
-            @Override
             public Component getNarration() { return Component.literal(entry.displayName); }
         }
     }
 
     // Selected Entry data holder
     static class SelectedEntry {
-        final ResourceLocation entityTypeId;
+        final Identifier entityTypeId;
         final String displayName;
         final EditBox weightBox;
 
-        SelectedEntry(ResourceLocation entityTypeId, String displayName, Screen screen) {
+        SelectedEntry(Identifier entityTypeId, String displayName, Screen screen) {
             this.entityTypeId = entityTypeId;
             this.displayName = displayName;
             this.weightBox = new EditBox(Minecraft.getInstance().font, 0, 0, 40, 18,
                     Component.literal("1"));
             weightBox.setValue("1");
-            weightBox.setFilter(s -> s.matches("\\d*"));
             weightBox.setMaxLength(3);
         }
     }

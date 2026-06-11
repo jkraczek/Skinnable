@@ -5,8 +5,8 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.function.Supplier;
@@ -20,10 +20,10 @@ public class FabricPlatformHelper implements IPlatformHelper {
 
     @Override
     @SuppressWarnings("unchecked")
-    public <T> Supplier<T> register(ResourceKey<Registry<T>> registryKey, String id, Supplier<T> factory) {
-        ResourceLocation location = ResourceLocation.fromNamespaceAndPath(MOD_ID, id);
-        Registry<T> registry = (Registry<T>) BuiltInRegistries.REGISTRY.getOptional(registryKey.location())
-                .orElseThrow(() -> new IllegalStateException("Unknown registry: " + registryKey.location()));
+    public <T> Supplier<T> register(ResourceKey<? extends Registry<T>> registryKey, String id, Supplier<T> factory) {
+        Identifier location = Identifier.fromNamespaceAndPath(MOD_ID, id);
+        Registry<T> registry = (Registry<T>) BuiltInRegistries.REGISTRY.getOptional(registryKey.identifier())
+                .orElseThrow(() -> new IllegalStateException("Unknown registry: " + registryKey.identifier()));
         T value = Registry.register(registry, location, factory.get());
         return () -> value;
     }

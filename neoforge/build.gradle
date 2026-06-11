@@ -24,7 +24,7 @@ neoForge {
 }
 
 dependencies {
-    implementation project(path: ':common', configuration: 'namedElements')
+    implementation project(':common')
 }
 
 processResources {

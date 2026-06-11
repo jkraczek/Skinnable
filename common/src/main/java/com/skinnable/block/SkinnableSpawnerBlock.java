@@ -1,5 +1,6 @@
 package com.skinnable.block;
 
+import com.mojang.serialization.MapCodec;
 import com.skinnable.blockentity.SkinnableSpawnerBlockEntity;
 import com.skinnable.platform.Services;
 import com.skinnable.registry.ModBlockEntityTypes;
@@ -24,13 +25,20 @@ import org.jetbrains.annotations.Nullable;
 
 public class SkinnableSpawnerBlock extends BaseEntityBlock {
 
+    public static final MapCodec<SkinnableSpawnerBlock> CODEC = simpleCodec(SkinnableSpawnerBlock::new);
+
     public SkinnableSpawnerBlock(BlockBehaviour.Properties properties) {
         super(properties);
     }
 
     @Override
+    protected MapCodec<? extends BaseEntityBlock> codec() {
+        return CODEC;
+    }
+
+    @Override
     public RenderShape getRenderShape(BlockState state) {
-        return RenderShape.ENTITYBLOCK_ANIMATED;
+        return RenderShape.INVISIBLE;
     }
 
     @Override
@@ -40,7 +48,7 @@ public class SkinnableSpawnerBlock extends BaseEntityBlock {
 
     @Override
     public @Nullable <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> blockEntityType) {
-        if (level.isClientSide) return null;
+        if (level.isClientSide()) return null;
         return createTickerHelper(blockEntityType, ModBlockEntityTypes.SKINNABLE_SPAWNER.get(),
                 SkinnableSpawnerBlockEntity::serverTick);
     }
@@ -48,7 +56,7 @@ public class SkinnableSpawnerBlock extends BaseEntityBlock {
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (!player.getAbilities().instabuild) return InteractionResult.PASS;
-        if (level.isClientSide) return InteractionResult.SUCCESS;
+        if (level.isClientSide()) return InteractionResult.SUCCESS;
 
         BlockEntity be = level.getBlockEntity(pos);
         if (!(be instanceof SkinnableSpawnerBlockEntity spawnerBe)) return InteractionResult.PASS;
@@ -67,12 +75,12 @@ public class SkinnableSpawnerBlock extends BaseEntityBlock {
     }
 
     @Override
-    public void playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+    public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
         if (!player.getAbilities().instabuild) {
             level.setBlock(pos, state, 3);
-            return;
+            return state;
         }
-        super.playerWillDestroy(level, pos, state, player);
+        return super.playerWillDestroy(level, pos, state, player);
     }
 
     @Override

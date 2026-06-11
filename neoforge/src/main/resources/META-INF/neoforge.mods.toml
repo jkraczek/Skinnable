@@ -4,7 +4,7 @@ license="MIT"
 
 [[mods]]
 modId="skinnable"
-version="${file.jarVersion}"
+version="${version}"
 displayName="Skinnable"
 description='''
 Disguise command blocks and mob spawners as any vanilla block.

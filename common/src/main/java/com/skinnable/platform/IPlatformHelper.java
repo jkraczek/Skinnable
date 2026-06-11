@@ -9,6 +9,6 @@ import java.util.function.Supplier;
 
 public interface IPlatformHelper {
     String getPlatformName();
-    <T> Supplier<T> register(ResourceKey<Registry<T>> registry, String id, Supplier<T> factory);
+    <T> Supplier<T> register(ResourceKey<? extends Registry<T>> registry, String id, Supplier<T> factory);
     void sendPacketToPlayer(ServerPlayer player, CustomPacketPayload payload);
 }

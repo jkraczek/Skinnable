@@ -5,25 +5,25 @@ import com.skinnable.registry.ModBlockEntityTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.Nullable;
+
+import net.minecraft.util.RandomSource;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.random.RandomGenerator;
 
 public class SkinnableSpawnerBlockEntity extends BlockEntity implements ICamouflageBlockEntity {
 
@@ -50,7 +50,7 @@ public class SkinnableSpawnerBlockEntity extends BlockEntity implements ICamoufl
     public void setCamouflage(BlockState state) {
         this.camouflage = state;
         setChanged();
-        if (level != null && !level.isClientSide) {
+        if (level != null && !level.isClientSide()) {
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
         }
     }
@@ -74,54 +74,43 @@ public class SkinnableSpawnerBlockEntity extends BlockEntity implements ICamoufl
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
         if (camouflage != null) {
-            tag.put("Camouflage", NbtUtils.writeBlockState(camouflage));
+            output.store("Camouflage", BlockState.CODEC, camouflage);
         }
-        ListTag entriesTag = new ListTag();
+        var list = output.childrenList("SpawnEntries");
         for (SpawnEntry entry : spawnEntries) {
-            CompoundTag entryTag = new CompoundTag();
-            entryTag.putString("EntityType", entry.entityType().toString());
-            entryTag.putInt("Weight", entry.weight());
-            entriesTag.add(entryTag);
+            var child = list.addChild();
+            child.putString("EntityType", entry.entityType().toString());
+            child.putInt("Weight", entry.weight());
         }
-        tag.put("SpawnEntries", entriesTag);
-        tag.putInt("SpawnDelayMin", spawnDelayMin);
-        tag.putInt("SpawnDelayMax", spawnDelayMax);
-        tag.putInt("SpawnCount", spawnCount);
-        tag.putInt("MaxNearbyEntities", maxNearbyEntities);
-        tag.putInt("RequiredPlayerRange", requiredPlayerRange);
-        tag.putInt("SpawnDelay", spawnDelay);
+        output.putInt("SpawnDelayMin", spawnDelayMin);
+        output.putInt("SpawnDelayMax", spawnDelayMax);
+        output.putInt("SpawnCount", spawnCount);
+        output.putInt("MaxNearbyEntities", maxNearbyEntities);
+        output.putInt("RequiredPlayerRange", requiredPlayerRange);
+        output.putInt("SpawnDelay", spawnDelay);
     }
 
     @Override
-    public void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
-        if (tag.contains("Camouflage")) {
-            camouflage = NbtUtils.readBlockState(
-                    registries.lookupOrThrow(Registries.BLOCK),
-                    tag.getCompound("Camouflage")
-            );
-        }
+    public void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        input.read("Camouflage", BlockState.CODEC).ifPresent(s -> camouflage = s);
         spawnEntries = new ArrayList<>();
-        if (tag.contains("SpawnEntries", Tag.TAG_LIST)) {
-            ListTag entriesTag = tag.getList("SpawnEntries", Tag.TAG_COMPOUND);
-            for (int i = 0; i < entriesTag.size(); i++) {
-                CompoundTag entryTag = entriesTag.getCompound(i);
-                ResourceLocation entityTypeId = ResourceLocation.tryParse(entryTag.getString("EntityType"));
-                int weight = entryTag.getInt("Weight");
-                if (entityTypeId != null && weight > 0) {
-                    spawnEntries.add(new SpawnEntry(entityTypeId, weight));
-                }
+        for (var child : input.childrenListOrEmpty("SpawnEntries")) {
+            Identifier entityTypeId = Identifier.tryParse(child.getStringOr("EntityType", ""));
+            int weight = child.getIntOr("Weight", 0);
+            if (entityTypeId != null && weight > 0) {
+                spawnEntries.add(new SpawnEntry(entityTypeId, weight));
             }
         }
-        if (tag.contains("SpawnDelayMin")) spawnDelayMin = tag.getInt("SpawnDelayMin");
-        if (tag.contains("SpawnDelayMax")) spawnDelayMax = tag.getInt("SpawnDelayMax");
-        if (tag.contains("SpawnCount")) spawnCount = tag.getInt("SpawnCount");
-        if (tag.contains("MaxNearbyEntities")) maxNearbyEntities = tag.getInt("MaxNearbyEntities");
-        if (tag.contains("RequiredPlayerRange")) requiredPlayerRange = tag.getInt("RequiredPlayerRange");
-        if (tag.contains("SpawnDelay")) spawnDelay = tag.getInt("SpawnDelay");
+        spawnDelayMin = input.getIntOr("SpawnDelayMin", spawnDelayMin);
+        spawnDelayMax = input.getIntOr("SpawnDelayMax", spawnDelayMax);
+        spawnCount = input.getIntOr("SpawnCount", spawnCount);
+        maxNearbyEntities = input.getIntOr("MaxNearbyEntities", maxNearbyEntities);
+        requiredPlayerRange = input.getIntOr("RequiredPlayerRange", requiredPlayerRange);
+        spawnDelay = input.getIntOr("SpawnDelay", spawnDelay);
     }
 
     @Override
@@ -153,14 +142,14 @@ public class SkinnableSpawnerBlockEntity extends BlockEntity implements ICamoufl
         if (be.spawnDelay > 0) return;
 
         int range = Math.max(1, be.spawnDelayMax - be.spawnDelayMin);
-        be.spawnDelay = be.spawnDelayMin + serverLevel.random.nextInt(range);
+        be.spawnDelay = be.spawnDelayMin + serverLevel.getRandom().nextInt(range);
 
         if (be.spawnEntries.isEmpty()) return;
 
-        Optional<ResourceLocation> picked = pickWeightedRandom(be.spawnEntries, serverLevel.random);
+        Optional<Identifier> picked = pickWeightedRandom(be.spawnEntries, serverLevel.getRandom());
         if (picked.isEmpty()) return;
 
-        ResourceLocation entityTypeId = picked.get();
+        Identifier entityTypeId = picked.get();
         var optEntityType = BuiltInRegistries.ENTITY_TYPE.getOptional(entityTypeId);
         if (optEntityType.isEmpty()) return;
 
@@ -173,16 +162,16 @@ public class SkinnableSpawnerBlockEntity extends BlockEntity implements ICamoufl
         if (nearbyCount >= be.maxNearbyEntities) return;
 
         for (int i = 0; i < be.spawnCount; i++) {
-            double spawnX = pos.getX() + (serverLevel.random.nextDouble() - serverLevel.random.nextDouble()) * 4 + 0.5;
-            double spawnY = pos.getY() + serverLevel.random.nextInt(3) - 1;
-            double spawnZ = pos.getZ() + (serverLevel.random.nextDouble() - serverLevel.random.nextDouble()) * 4 + 0.5;
+            double spawnX = pos.getX() + (serverLevel.getRandom().nextDouble() - serverLevel.getRandom().nextDouble()) * 4 + 0.5;
+            double spawnY = pos.getY() + serverLevel.getRandom().nextInt(3) - 1;
+            double spawnZ = pos.getZ() + (serverLevel.getRandom().nextDouble() - serverLevel.getRandom().nextDouble()) * 4 + 0.5;
             BlockPos spawnPos = BlockPos.containing(spawnX, spawnY, spawnZ);
             entityType.spawn(serverLevel, spawnPos, EntitySpawnReason.SPAWNER);
         }
         be.setChanged();
     }
 
-    private static Optional<ResourceLocation> pickWeightedRandom(List<SpawnEntry> entries, RandomGenerator random) {
+    private static Optional<Identifier> pickWeightedRandom(List<SpawnEntry> entries, RandomSource random) {
         int totalWeight = entries.stream().mapToInt(SpawnEntry::weight).sum();
         if (totalWeight <= 0) return Optional.empty();
         int roll = random.nextInt(totalWeight);

@@ -3,18 +3,21 @@ plugins {
 }
 
 allprojects {
-    apply plugin: 'java'
     version = mod_version
     group = 'com.skinnable'
-
-    java {
-        toolchain { languageVersion = JavaLanguageVersion.of(java_version as int) }
-        withSourcesJar()
-    }
 
     repositories {
         maven { url = 'https://maven.fabricmc.net/' }
         maven { url = 'https://maven.neoforged.net/releases' }
         mavenCentral()
+    }
+}
+
+subprojects {
+    plugins.withId('java') {
+        java {
+            toolchain { languageVersion = JavaLanguageVersion.of(java_version as int) }
+            withSourcesJar()
+        }
     }
 }

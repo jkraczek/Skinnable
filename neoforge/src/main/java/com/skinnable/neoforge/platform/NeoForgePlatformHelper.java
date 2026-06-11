@@ -23,7 +23,7 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
 
     @Override
     @SuppressWarnings("unchecked")
-    public <T> Supplier<T> register(ResourceKey<Registry<T>> registryKey, String id, Supplier<T> factory) {
+    public <T> Supplier<T> register(ResourceKey<? extends Registry<T>> registryKey, String id, Supplier<T> factory) {
         DeferredRegister<T> reg = (DeferredRegister<T>) registers.computeIfAbsent(
                 registryKey,
                 key -> DeferredRegister.create((ResourceKey<Registry<T>>) key, Skinnable.MOD_ID)

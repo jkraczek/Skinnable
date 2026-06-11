@@ -2,18 +2,11 @@ plugins {
     id 'net.fabricmc.fabric-loom'
 }
 
-loom {
-    runs {
-        client { client() }
-        server { server() }
-    }
-}
-
 dependencies {
     minecraft "com.mojang:minecraft:${minecraft_version}"
-    modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
-    implementation project(path: ':common', configuration: 'namedElements')
+    compileOnly "net.fabricmc:fabric-loader:${fabric_loader_version}"
+    compileOnly "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+    implementation project(':common')
 }
 
 processResources {
