@@ -88,8 +88,9 @@ public class SkinnableCommandBlock extends BaseEntityBlock {
             level.setBlock(pos, state.setValue(POWERED, newPowered), 3);
             cmdBe.setPowered(newPowered);
 
-            if (newPowered && cmdBe.getMode() == SkinnableCommandBlockEntity.Mode.REDSTONE) {
-                cmdBe.getCommandBlock().performCommand(level);
+            if (newPowered && cmdBe.getMode() == SkinnableCommandBlockEntity.Mode.REDSTONE
+                    && level instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                cmdBe.getCommandBlock().performCommand(serverLevel);
             }
         }
     }

@@ -22,8 +22,8 @@ public class FabricPlatformHelper implements IPlatformHelper {
     @SuppressWarnings("unchecked")
     public <T> Supplier<T> register(ResourceKey<Registry<T>> registryKey, String id, Supplier<T> factory) {
         ResourceLocation location = ResourceLocation.fromNamespaceAndPath(MOD_ID, id);
-        Registry<T> registry = (Registry<T>) BuiltInRegistries.REGISTRY.getValue(registryKey.location());
-        if (registry == null) throw new IllegalStateException("Unknown registry: " + registryKey);
+        Registry<T> registry = (Registry<T>) BuiltInRegistries.REGISTRY.getOptional(registryKey.location())
+                .orElseThrow(() -> new IllegalStateException("Unknown registry: " + registryKey.location()));
         T value = Registry.register(registry, location, factory.get());
         return () -> value;
     }
