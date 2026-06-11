@@ -1,0 +1,36 @@
+plugins {
+    id 'net.neoforged.moddev' version "${moddevgradle_version}" apply false
+}
+apply plugin: 'net.neoforged.moddev'
+
+neoForge {
+    version = "${neoforge_version}"
+
+    runs {
+        client {
+            client()
+            gameDirectory = project.file('runs/client')
+        }
+        server {
+            server()
+            gameDirectory = project.file('runs/server')
+        }
+    }
+
+    mods {
+        skinnable {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+dependencies {
+    implementation project(path: ':common', configuration: 'namedElements')
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand version: project.version
+    }
+}
