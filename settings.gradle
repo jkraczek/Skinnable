@@ -1,11 +1,3 @@
-// Load versions from gradle.properties before pluginManagement runs,
-// because resolutionStrategy.eachPlugin fires before pluginManagement.plugins
-// defaults are applied, so requested.version would be null otherwise.
-def props = new java.util.Properties()
-file("gradle.properties").withInputStream { props.load(it) }
-def loomVersion    = props.getProperty("loom_version",       "1.16-SNAPSHOT")
-def mdgVersion     = props.getProperty("moddevgradle_version", "2.0.140")
-
 pluginManagement {
     repositories {
         maven { url = 'https://maven.fabricmc.net/' }
@@ -13,19 +5,20 @@ pluginManagement {
         gradlePluginPortal()
     }
 
-    // Fabric Loom SNAPSHOTs don't publish Gradle plugin-marker artifacts,
-    // so we map the plugin ID directly to the implementation JAR.
+    // Fabric Loom SNAPSHOTs don't publish a Gradle plugin-marker artifact,
+    // so we map the plugin ID to the actual JAR here.
+    // If you change loom_version in gradle.properties, update the version here too.
     resolutionStrategy {
         eachPlugin {
             if (requested.id.id == 'dev.fabricmc.loom') {
-                useModule("net.fabricmc:fabric-loom:${loomVersion}")
+                useModule("net.fabricmc:fabric-loom:1.16-SNAPSHOT")
             }
         }
     }
 
     plugins {
-        id 'dev.fabricmc.loom'    version "${loomVersion}" apply false
-        id 'net.neoforged.moddev' version "${mdgVersion}"  apply false
+        id 'dev.fabricmc.loom'    version '1.16-SNAPSHOT' apply false
+        id 'net.neoforged.moddev' version '2.0.140'       apply false
     }
 }
 
