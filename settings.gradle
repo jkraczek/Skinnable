@@ -5,20 +5,19 @@ pluginManagement {
         gradlePluginPortal()
     }
 
-    // Fabric Loom SNAPSHOTs don't publish a Gradle plugin-marker artifact,
-    // so we map the plugin ID to the actual JAR here.
-    // If you change loom_version in gradle.properties, update the version here too.
+    // Map the new plugin ID to the implementation artifact in case the
+    // plugin-marker artifact is not published for SNAPSHOT builds.
     resolutionStrategy {
         eachPlugin {
-            if (requested.id.id == 'dev.fabricmc.loom') {
+            if (requested.id.id == 'net.fabricmc.fabric-loom') {
                 useModule("net.fabricmc:fabric-loom:1.16-SNAPSHOT")
             }
         }
     }
 
     plugins {
-        id 'dev.fabricmc.loom'    version '1.16-SNAPSHOT' apply false
-        id 'net.neoforged.moddev' version '2.0.140'       apply false
+        id 'net.fabricmc.fabric-loom' version '1.16-SNAPSHOT' apply false
+        id 'net.neoforged.moddev'     version '2.0.140'       apply false
     }
 }
 

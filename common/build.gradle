@@ -1,5 +1,5 @@
 plugins {
-    id 'dev.fabricmc.loom'
+    id 'net.fabricmc.fabric-loom'
 }
 
 dependencies {
