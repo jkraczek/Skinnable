@@ -6,7 +6,11 @@ dependencies {
     minecraft "com.mojang:minecraft:${minecraft_version}"
     compileOnly "net.fabricmc:fabric-loader:${fabric_loader_version}"
     compileOnly "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
-    implementation project(':common')
+    compileOnly project(':common')
+}
+
+jar {
+    from project(':common').sourceSets.main.output
 }
 
 processResources {
