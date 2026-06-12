@@ -4,13 +4,9 @@ import com.skinnable.data.SpawnEntry;
 import com.skinnable.network.packet.C2SUpdateSpawnerPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.components.AbstractSelectionList;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.input.CharacterEvent;
-import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -28,348 +24,351 @@ public class SkinnableSpawnerScreen extends Screen {
 
     private final BlockPos blockPos;
 
-    // Settings fields
-    private EditBox minDelayBox;
-    private EditBox maxDelayBox;
-    private EditBox spawnCountBox;
-    private EditBox maxNearbyBox;
-    private EditBox playerRangeBox;
+    // Entity list (left column)
+    private List<EntityInfo> allEntities = new ArrayList<>();
+    private List<EntityInfo> filteredEntities = new ArrayList<>();
+    private int entityScroll = 0;
+    private static final int ENTITY_ROW_H = 18;
+
+    // Selected entries (middle column)
+    private final List<SelectedEntry> selectedEntries = new ArrayList<>();
+    private int selectedScroll = 0;
+    private static final int SELECTED_ROW_H = 22;
+
+    // Single shared EditBox for weight editing
+    private EditBox weightEditBox;
+    private int editingWeightIdx = -1;
+
+    // Layout — computed in init
+    private int listTopY;
+    private int listHeight;
+    private static final int LEFT_X = 5;
+    private static final int LEFT_W = 155;
+    private static final int MID_X = 165;
+    private int midW;            // computed from screen width so it never overlaps settings
+    private int settingsLabelX;  // left edge of the settings column
+
+    // Initial settings values (passed in constructor, applied in init)
+    private final int initMinDelay, initMaxDelay, initSpawnCount, initMaxNearby, initPlayerRange;
+    private final List<SpawnEntry> initEntries;
+
+    // Settings widgets
+    private EditBox minDelayBox, maxDelayBox, spawnCountBox, maxNearbyBox, playerRangeBox;
     private EditBox searchBox;
 
-    // Data
-    private final List<SelectedEntry> selectedEntries = new ArrayList<>();
-
-    // Widgets
-    private EntityListWidget entityListWidget;
-    private SelectedEntriesWidget selectedEntriesWidget;
-
-    public SkinnableSpawnerScreen(BlockPos blockPos) {
+    public SkinnableSpawnerScreen(BlockPos blockPos, List<SpawnEntry> currentEntries,
+                                  int minDelay, int maxDelay, int spawnCount,
+                                  int maxNearby, int playerRange) {
         super(Component.translatable("screen.skinnable.spawner_config"));
         this.blockPos = blockPos;
+        this.initEntries = currentEntries;
+        this.initMinDelay = minDelay;
+        this.initMaxDelay = maxDelay;
+        this.initSpawnCount = spawnCount;
+        this.initMaxNearby = maxNearby;
+        this.initPlayerRange = playerRange;
+    }
+
+    // Convenience constructor for new (empty) spawner
+    public SkinnableSpawnerScreen(BlockPos blockPos) {
+        this(blockPos, List.of(), 200, 800, 4, 6, 16);
     }
 
     @Override
     protected void init() {
-        int leftX = 5;
-        int midX = 165;
-        int rightX = 335;
-        int topY = 25;
+        listTopY = 50;
+        listHeight = height - listTopY - 40;
+        // Settings column: labels from (width-195), boxes from (width-130).
+        // Middle column fills the gap between left and settings, with a 5px margin.
+        settingsLabelX = width - 195;
+        midW = Math.max(80, settingsLabelX - MID_X - 5);
+
+        // Build entity type list once
+        if (allEntities.isEmpty()) {
+            BuiltInRegistries.ENTITY_TYPE.stream()
+                    .filter(et -> et != EntityType.PLAYER && BuiltInRegistries.ENTITY_TYPE.getKey(et) != null)
+                    .sorted(Comparator.comparing(et -> BuiltInRegistries.ENTITY_TYPE.getKey(et).toString()))
+                    .forEach(et -> {
+                        Identifier key = BuiltInRegistries.ENTITY_TYPE.getKey(et);
+                        allEntities.add(new EntityInfo(key, key.getPath().replace('_', ' ')));
+                    });
+            filteredEntities = new ArrayList<>(allEntities);
+        }
+
+        // Populate selected entries from initial data (only on first init)
+        if (selectedEntries.isEmpty() && !initEntries.isEmpty()) {
+            for (SpawnEntry se : initEntries) {
+                String displayName = se.entityType().getPath().replace('_', ' ');
+                selectedEntries.add(new SelectedEntry(se.entityType(), displayName, se.weight()));
+            }
+        }
 
         // Search box
-        searchBox = new EditBox(font, leftX, topY, 155, 20,
-                Component.translatable("screen.skinnable.search_entities"));
-        searchBox.setHint(Component.translatable("screen.skinnable.search_entities"));
+        searchBox = new EditBox(font, LEFT_X, listTopY - 25, LEFT_W, 20, Component.empty());
+        searchBox.setHint(Component.literal("Search..."));
         searchBox.setResponder(text -> {
-            if (entityListWidget != null) entityListWidget.updateFilter(text);
+            String lower = text.toLowerCase();
+            filteredEntities = allEntities.stream()
+                    .filter(e -> lower.isEmpty() || e.id.toString().contains(lower) || e.displayName.contains(lower))
+                    .collect(Collectors.toList());
+            entityScroll = 0;
         });
         addRenderableWidget(searchBox);
 
-        // Entity list
-        entityListWidget = new EntityListWidget(minecraft, 155, height - topY - 55, topY + 25, leftX);
-        addWidget(entityListWidget);
+        // Settings boxes (right column) — labels at settingsLabelX, boxes 65px to the right
+        int settingsBoxX = settingsLabelX + 65;
+        int settY = listTopY;
+        minDelayBox    = makeSettingBox(settingsBoxX, settY, String.valueOf(initMinDelay));    settY += 25;
+        maxDelayBox    = makeSettingBox(settingsBoxX, settY, String.valueOf(initMaxDelay));    settY += 25;
+        spawnCountBox  = makeSettingBox(settingsBoxX, settY, String.valueOf(initSpawnCount));  settY += 25;
+        maxNearbyBox   = makeSettingBox(settingsBoxX, settY, String.valueOf(initMaxNearby));   settY += 25;
+        playerRangeBox = makeSettingBox(settingsBoxX, settY, String.valueOf(initPlayerRange));
 
-        // Selected entries widget
-        selectedEntriesWidget = new SelectedEntriesWidget(minecraft, 165, height - topY - 55, topY + 5, midX);
-        addWidget(selectedEntriesWidget);
+        // Weight edit box — hidden off-screen until user clicks a weight cell
+        weightEditBox = new EditBox(font, -2000, -2000, 38, 18, Component.empty());
+        weightEditBox.setMaxLength(3);
+        addRenderableWidget(weightEditBox);
 
-        // Settings
-        int settingY = topY;
-        int settingBoxW = 60;
-        int settingBoxX = rightX + 130 - 30;
-
-        minDelayBox = new EditBox(font, settingBoxX, settingY, settingBoxW, 20,
-                Component.translatable("screen.skinnable.min_delay"));
-        minDelayBox.setValue("200");
-        addRenderableWidget(minDelayBox);
-        settingY += 25;
-
-        maxDelayBox = new EditBox(font, settingBoxX, settingY, settingBoxW, 20,
-                Component.translatable("screen.skinnable.max_delay"));
-        maxDelayBox.setValue("800");
-        addRenderableWidget(maxDelayBox);
-        settingY += 25;
-
-        spawnCountBox = new EditBox(font, settingBoxX, settingY, settingBoxW, 20,
-                Component.translatable("screen.skinnable.spawn_count"));
-        spawnCountBox.setValue("4");
-        addRenderableWidget(spawnCountBox);
-        settingY += 25;
-
-        maxNearbyBox = new EditBox(font, settingBoxX, settingY, settingBoxW, 20,
-                Component.translatable("screen.skinnable.max_nearby"));
-        maxNearbyBox.setValue("6");
-        addRenderableWidget(maxNearbyBox);
-        settingY += 25;
-
-        playerRangeBox = new EditBox(font, settingBoxX, settingY, settingBoxW, 20,
-                Component.translatable("screen.skinnable.player_range"));
-        playerRangeBox.setValue("16");
-        addRenderableWidget(playerRangeBox);
-
-        // Save button
+        // Save / Cancel
         addRenderableWidget(Button.builder(
-                Component.translatable("screen.skinnable.save"),
-                btn -> saveAndClose()
+                Component.translatable("screen.skinnable.save"), btn -> saveAndClose()
         ).bounds(width / 2 - 105, height - 30, 100, 20).build());
-
-        // Cancel button
         addRenderableWidget(Button.builder(
-                Component.translatable("screen.skinnable.cancel"),
-                btn -> onClose()
+                Component.translatable("screen.skinnable.cancel"), btn -> onClose()
         ).bounds(width / 2 + 5, height - 30, 100, 20).build());
     }
 
+    private EditBox makeSettingBox(int x, int y, String value) {
+        EditBox box = new EditBox(font, x, y, 60, 20, Component.empty());
+        box.setValue(value);
+        addRenderableWidget(box);
+        return box;
+    }
+
+    @Override
+    public void extractRenderState(GuiGraphicsExtractor extractor, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(extractor, mouseX, mouseY, partialTick);
+
+        // Title
+        extractor.text(font, title, width / 2 - font.width(title) / 2, 8, 0xFFFFFFFF);
+
+        // Column headers
+        extractor.text(font, "Available Mobs:", LEFT_X, listTopY - 35, 0xFFAAAAAA);
+        extractor.text(font, "Selected Mobs:", MID_X, listTopY - 12, 0xFFAAAAAA);
+        extractor.text(font, "Spawn Settings:", settingsLabelX, listTopY - 12, 0xFFAAAAAA);
+
+        // Settings labels (left-aligned within settings column)
+        int settY = listTopY;
+        String[] labels = {"Min Delay:", "Max Delay:", "Spawn Count:", "Max Nearby:", "Player Range:"};
+        for (String label : labels) {
+            extractor.text(font, label, settingsLabelX + 2, settY + 5, 0xFFFFFFFF);
+            settY += 25;
+        }
+
+        // ── Entity list (left) ─────────────────────────────────────────────
+        int listBottom = listTopY + listHeight;
+        extractor.fill(LEFT_X, listTopY, LEFT_X + LEFT_W, listBottom, 0xAA000000);
+        for (int i = entityScroll; i < filteredEntities.size(); i++) {
+            int ey = listTopY + (i - entityScroll) * ENTITY_ROW_H;
+            if (ey + ENTITY_ROW_H > listBottom) break;
+            if (mouseX >= LEFT_X && mouseX < LEFT_X + LEFT_W && mouseY >= ey && mouseY < ey + ENTITY_ROW_H) {
+                extractor.fill(LEFT_X, ey, LEFT_X + LEFT_W, ey + ENTITY_ROW_H, 0x55FFFFFF);
+            }
+            extractor.text(font, filteredEntities.get(i).displayName, LEFT_X + 3, ey + 4, 0xFFFFFFFF);
+        }
+
+        // ── Selected entries (middle) ──────────────────────────────────────
+        int midRight = MID_X + midW;
+        extractor.fill(MID_X, listTopY, midRight, listBottom, 0xAA000000);
+
+        // Update weight box position if visible entry is being edited
+        if (editingWeightIdx >= 0) {
+            int visIdx = editingWeightIdx - selectedScroll;
+            if (visIdx >= 0) {
+                int sy = listTopY + visIdx * SELECTED_ROW_H;
+                if (sy + SELECTED_ROW_H <= listBottom) {
+                    weightEditBox.setX(midRight - 60);
+                    weightEditBox.setY(sy + 2);
+                } else {
+                    weightEditBox.setX(-2000); // scrolled out of view
+                }
+            } else {
+                weightEditBox.setX(-2000);
+            }
+        }
+
+        for (int i = selectedScroll; i < selectedEntries.size(); i++) {
+            int sy = listTopY + (i - selectedScroll) * SELECTED_ROW_H;
+            if (sy + SELECTED_ROW_H > listBottom) break;
+            SelectedEntry se = selectedEntries.get(i);
+
+            extractor.text(font, se.displayName, MID_X + 3, sy + 6, 0xFFFFFFFF);
+
+            // Weight: show EditBox when editing, plain text otherwise
+            if (editingWeightIdx != i) {
+                extractor.text(font, "W:" + se.weight, midRight - 62, sy + 6, 0xFFAAAAAA);
+            }
+
+            // X remove button
+            boolean xHover = mouseX >= midRight - 22 && mouseX < midRight - 2
+                    && mouseY >= sy + 2 && mouseY < sy + SELECTED_ROW_H - 2;
+            extractor.fill(midRight - 22, sy + 2, midRight - 2, sy + SELECTED_ROW_H - 2,
+                    xHover ? 0xFFAA3333 : 0xFF662222);
+            extractor.text(font, "X", midRight - 17, sy + 6, 0xFFFFAAAA);
+        }
+    }
+
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean focused) {
+        int mx = (int) event.x();
+        int my = (int) event.y();
+        int listBottom = listTopY + listHeight;
+
+        if (event.button() == 0) {
+            // Entity list click → add mob
+            if (mx >= LEFT_X && mx < LEFT_X + LEFT_W && my >= listTopY && my < listBottom) {
+                int row = entityScroll + (my - listTopY) / ENTITY_ROW_H;
+                if (row >= 0 && row < filteredEntities.size()) {
+                    saveCurrentWeightEdit();
+                    EntityInfo info = filteredEntities.get(row);
+                    if (selectedEntries.stream().noneMatch(se -> se.id.equals(info.id))) {
+                        selectedEntries.add(new SelectedEntry(info.id, info.displayName, 1));
+                    }
+                }
+                return true;
+            }
+
+            int midRight = MID_X + midW;
+
+            // Selected entries area clicks
+            if (mx >= MID_X && mx < midRight && my >= listTopY && my < listBottom) {
+                int visIdx = (my - listTopY) / SELECTED_ROW_H;
+                int actualIdx = selectedScroll + visIdx;
+                if (actualIdx >= 0 && actualIdx < selectedEntries.size()) {
+                    int sy = listTopY + visIdx * SELECTED_ROW_H;
+
+                    // X button
+                    if (mx >= midRight - 22 && mx < midRight - 2 && my >= sy + 2 && my < sy + SELECTED_ROW_H - 2) {
+                        saveCurrentWeightEdit();
+                        selectedEntries.remove(actualIdx);
+                        if (editingWeightIdx >= selectedEntries.size()) {
+                            editingWeightIdx = -1;
+                            weightEditBox.setX(-2000);
+                        }
+                        return true;
+                    }
+
+                    // Weight cell click → start editing
+                    if (mx >= midRight - 62 && mx < midRight - 22) {
+                        if (editingWeightIdx != actualIdx) {
+                            saveCurrentWeightEdit();
+                            editingWeightIdx = actualIdx;
+                            weightEditBox.setX(midRight - 60);
+                            weightEditBox.setY(sy + 2);
+                            weightEditBox.setValue(String.valueOf(selectedEntries.get(actualIdx).weight));
+                        }
+                        // fall through to super so the EditBox can receive the click
+                    }
+                }
+            }
+        }
+
+        boolean result = super.mouseClicked(event, focused);
+
+        // If click landed outside the active weight box, save the edit
+        if (event.button() == 0 && editingWeightIdx >= 0) {
+            int visIdx = editingWeightIdx - selectedScroll;
+            int sy = listTopY + visIdx * SELECTED_ROW_H;
+            int midRight = MID_X + midW;
+            boolean onWeightBox = mx >= midRight - 62 && mx < midRight - 22
+                    && my >= sy + 2 && my < sy + SELECTED_ROW_H - 2;
+            if (!onWeightBox) {
+                saveCurrentWeightEdit();
+            }
+        }
+
+        return result;
+    }
+
+    private void saveCurrentWeightEdit() {
+        if (editingWeightIdx >= 0 && editingWeightIdx < selectedEntries.size()) {
+            try {
+                int w = Math.max(1, Math.min(100, Integer.parseInt(weightEditBox.getValue())));
+                selectedEntries.get(editingWeightIdx).weight = w;
+            } catch (NumberFormatException ignored) {}
+        }
+        editingWeightIdx = -1;
+        weightEditBox.setX(-2000);
+        weightEditBox.setY(-2000);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        int listBottom = listTopY + listHeight;
+        int dy = (int) -Math.signum(scrollY);
+
+        if (mouseX >= LEFT_X && mouseX < LEFT_X + LEFT_W && mouseY >= listTopY && mouseY < listBottom) {
+            int maxScroll = Math.max(0, filteredEntities.size() - listHeight / ENTITY_ROW_H);
+            entityScroll = Math.max(0, Math.min(entityScroll + dy, maxScroll));
+            return true;
+        }
+        if (mouseX >= MID_X && mouseX < MID_X + midW && mouseY >= listTopY && mouseY < listBottom) {
+            saveCurrentWeightEdit();
+            int maxScroll = Math.max(0, selectedEntries.size() - listHeight / SELECTED_ROW_H);
+            selectedScroll = Math.max(0, Math.min(selectedScroll + dy, maxScroll));
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    @Override
+    public void onClose() {
+        saveCurrentWeightEdit();
+        super.onClose();
+    }
+
     private void saveAndClose() {
+        saveCurrentWeightEdit();
         List<SpawnEntry> entries = new ArrayList<>();
         for (SelectedEntry se : selectedEntries) {
-            int w = 1;
-            try { w = Math.max(1, Math.min(100, Integer.parseInt(se.weightBox.getValue()))); } catch (NumberFormatException ignored) {}
-            entries.add(new SpawnEntry(se.entityTypeId, w));
+            entries.add(new SpawnEntry(se.id, se.weight));
         }
-        int minDelay = parseIntClamp(minDelayBox.getValue(), 10, 0, 1200);
-        int maxDelay = parseIntClamp(maxDelayBox.getValue(), 40, minDelay, 1200);
-        int spawnCount = parseIntClamp(spawnCountBox.getValue(), 4, 1, 16);
-        int maxNearby = parseIntClamp(maxNearbyBox.getValue(), 6, 1, 20);
-        int playerRange = parseIntClamp(playerRangeBox.getValue(), 16, 0, 64);
+        int minDelay = parseClamp(minDelayBox.getValue(), 200, 0, 1200);
+        int maxDelay = parseClamp(maxDelayBox.getValue(), 800, minDelay, 1200);
+        int spawnCount = parseClamp(spawnCountBox.getValue(), 4, 1, 16);
+        int maxNearby = parseClamp(maxNearbyBox.getValue(), 6, 1, 20);
+        int playerRange = parseClamp(playerRangeBox.getValue(), 16, 0, 64);
 
         C2SUpdateSpawnerPacket packet = new C2SUpdateSpawnerPacket(
-                blockPos, entries, minDelay, maxDelay, spawnCount, maxNearby, playerRange
-        );
+                blockPos, entries, minDelay, maxDelay, spawnCount, maxNearby, playerRange);
         if (minecraft != null && minecraft.getConnection() != null) {
             minecraft.getConnection().send(new ServerboundCustomPayloadPacket(packet));
         }
         onClose();
     }
 
-    private static int parseIntClamp(String s, int def, int min, int max) {
-        try {
-            return Math.max(min, Math.min(max, Integer.parseInt(s)));
-        } catch (NumberFormatException e) {
-            return def;
-        }
-    }
-
-    @Override
-    public void extractRenderState(GuiGraphicsExtractor extractor, int mouseX, int mouseY, float partialTick) {
-        extractBackground(extractor, mouseX, mouseY, partialTick);
-        super.extractRenderState(extractor, mouseX, mouseY, partialTick);
-
-        extractor.text(font, title, width / 2 - font.width(title) / 2, 8, 0xFFFFFF);
-        extractor.text(font, "Available Entities:", 5, 17, 0xAAAAAA);
-        extractor.text(font, Component.translatable("screen.skinnable.selected_mobs"), 165, 17, 0xAAAAAA);
-        extractor.text(font, Component.translatable("screen.skinnable.spawn_settings"), 335, 17, 0xAAAAAA);
-
-        int rightX = 335;
-        int settingY = 25;
-        int step = 25;
-        String[] labels = {
-            "Min Delay:", "Max Delay:", "Spawn Count:", "Max Nearby:", "Player Range:"
-        };
-        for (String label : labels) {
-            extractor.text(font, label, rightX, settingY + 5, 0xFFFFFF);
-            settingY += step;
-        }
-
-        entityListWidget.extractRenderState(extractor, mouseX, mouseY, partialTick);
-        selectedEntriesWidget.extractRenderState(extractor, mouseX, mouseY, partialTick);
-    }
-
-    @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean focused) {
-        if (entityListWidget.mouseClicked(event, focused)) return true;
-        if (selectedEntriesWidget.mouseClicked(event, focused)) return true;
-        return super.mouseClicked(event, focused);
-    }
-
-    @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (entityListWidget.isMouseOver(mouseX, mouseY)) {
-            return entityListWidget.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
-        }
-        if (selectedEntriesWidget.isMouseOver(mouseX, mouseY)) {
-            return selectedEntriesWidget.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
-        }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    private static int parseClamp(String s, int def, int min, int max) {
+        try { return Math.max(min, Math.min(max, Integer.parseInt(s))); }
+        catch (NumberFormatException e) { return def; }
     }
 
     @Override
     public boolean isPauseScreen() { return false; }
 
-    private void addToSelected(Identifier entityTypeId, String displayName) {
-        boolean alreadyAdded = selectedEntries.stream().anyMatch(se -> se.entityTypeId.equals(entityTypeId));
-        if (!alreadyAdded) {
-            selectedEntries.add(new SelectedEntry(entityTypeId, displayName, this));
-            selectedEntriesWidget.refreshEntries();
-        }
-    }
+    // ── Data classes ──────────────────────────────────────────────────────
 
-    private void removeFromSelected(SelectedEntry entry) {
-        selectedEntries.remove(entry);
-        selectedEntriesWidget.refreshEntries();
-    }
-
-    // Entity List Widget
-    class EntityListWidget extends AbstractSelectionList<EntityListWidget.EntityEntry> {
-        private final List<EntityType<?>> allEntities;
-        private String currentFilter = "";
-
-        EntityListWidget(Minecraft mc, int width, int height, int y, int x) {
-            super(mc, width, height, y, 18);
-            this.setX(x);
-            this.allEntities = BuiltInRegistries.ENTITY_TYPE.stream()
-                    .filter(et -> et != EntityType.PLAYER)
-                    .sorted(Comparator.comparing(et -> BuiltInRegistries.ENTITY_TYPE.getKey(et).toString()))
-                    .collect(Collectors.toList());
-            refreshEntries(currentFilter);
-        }
-
-        void updateFilter(String filter) {
-            currentFilter = filter.toLowerCase();
-            refreshEntries(currentFilter);
-        }
-
-        private void refreshEntries(String filter) {
-            clearEntries();
-            for (EntityType<?> et : allEntities) {
-                Identifier key = BuiltInRegistries.ENTITY_TYPE.getKey(et);
-                if (key == null) continue;
-                String name = key.toString();
-                if (filter.isEmpty() || name.contains(filter)) {
-                    addEntry(new EntityEntry(et, key));
-                }
-            }
-        }
-
-        @Override
-        public int getRowWidth() { return width - 6; }
-
-        @Override
-        protected int scrollBarX() { return getX() + width - 6; }
-
-        @Override
-        protected void updateWidgetNarration(NarrationElementOutput narrationElementOutput) {}
-
-        class EntityEntry extends AbstractSelectionList.Entry<EntityEntry> {
-            private final EntityType<?> entityType;
-            private final Identifier key;
-            private final String displayName;
-
-            EntityEntry(EntityType<?> entityType, Identifier key) {
-                this.entityType = entityType;
-                this.key = key;
-                this.displayName = key.getPath().replace('_', ' ');
-            }
-
-            @Override
-            public void extractContent(GuiGraphicsExtractor extractor, int mouseX, int mouseY,
-                                       boolean focused, float partialTick) {
-                if (isMouseOver(mouseX, mouseY)) {
-                    extractor.fill(getContentX(), getContentY(), getContentRight(), getContentBottom(), 0x44FFFFFF);
-                }
-                extractor.text(SkinnableSpawnerScreen.this.font, displayName, getContentX() + 3, getContentY() + 4, 0xFFFFFF);
-            }
-
-            @Override
-            public boolean mouseClicked(MouseButtonEvent event, boolean focused) {
-                if (event.button() == 0) {
-                    SkinnableSpawnerScreen.this.addToSelected(key, displayName);
-                    return true;
-                }
-                return false;
-            }
-
-            public Component getNarration() { return Component.literal(displayName); }
-        }
-    }
-
-    // Selected Entries Widget
-    class SelectedEntriesWidget extends AbstractSelectionList<SelectedEntriesWidget.Row> {
-        SelectedEntriesWidget(Minecraft mc, int width, int height, int y, int x) {
-            super(mc, width, height, y, 22);
-            this.setX(x);
-            refreshEntries();
-        }
-
-        void refreshEntries() {
-            clearEntries();
-            for (SelectedEntry se : selectedEntries) {
-                addEntry(new Row(se));
-            }
-        }
-
-        @Override
-        public int getRowWidth() { return width - 6; }
-
-        @Override
-        protected int scrollBarX() { return getX() + width - 6; }
-
-        @Override
-        protected void updateWidgetNarration(NarrationElementOutput narrationElementOutput) {}
-
-        class Row extends AbstractSelectionList.Entry<Row> {
-            private final SelectedEntry entry;
-            private final Button removeBtn;
-
-            Row(SelectedEntry entry) {
-                this.entry = entry;
-                this.removeBtn = Button.builder(Component.literal("X"), btn -> {
-                    SkinnableSpawnerScreen.this.removeFromSelected(entry);
-                }).bounds(0, 0, 18, 18).build();
-            }
-
-            @Override
-            public void extractContent(GuiGraphicsExtractor extractor, int mouseX, int mouseY,
-                                       boolean focused, float partialTick) {
-                int left = getContentX();
-                int top = getContentY();
-                int w = getContentWidth();
-
-                extractor.text(SkinnableSpawnerScreen.this.font, entry.displayName, left + 3, top + 5, 0xFFFFFF);
-                extractor.text(SkinnableSpawnerScreen.this.font, "W:", left + w - 80, top + 5, 0xAAAAAA);
-
-                entry.weightBox.setX(left + w - 65);
-                entry.weightBox.setY(top + 2);
-                entry.weightBox.extractRenderState(extractor, mouseX, mouseY, partialTick);
-
-                removeBtn.setX(left + w - 22);
-                removeBtn.setY(top + 2);
-                removeBtn.extractRenderState(extractor, mouseX, mouseY, partialTick);
-            }
-
-            @Override
-            public boolean mouseClicked(MouseButtonEvent event, boolean focused) {
-                if (removeBtn.mouseClicked(event, focused)) return true;
-                if (entry.weightBox.mouseClicked(event, focused)) return true;
-                return false;
-            }
-
-            @Override
-            public boolean keyPressed(KeyEvent event) {
-                return entry.weightBox.keyPressed(event);
-            }
-
-            @Override
-            public boolean charTyped(CharacterEvent event) {
-                return entry.weightBox.charTyped(event);
-            }
-
-            public Component getNarration() { return Component.literal(entry.displayName); }
-        }
-    }
-
-    // Selected Entry data holder
-    static class SelectedEntry {
-        final Identifier entityTypeId;
+    static class EntityInfo {
+        final Identifier id;
         final String displayName;
-        final EditBox weightBox;
+        EntityInfo(Identifier id, String displayName) { this.id = id; this.displayName = displayName; }
+    }
 
-        SelectedEntry(Identifier entityTypeId, String displayName, Screen screen) {
-            this.entityTypeId = entityTypeId;
-            this.displayName = displayName;
-            this.weightBox = new EditBox(Minecraft.getInstance().font, 0, 0, 40, 18,
-                    Component.literal("1"));
-            weightBox.setValue("1");
-            weightBox.setMaxLength(3);
+    static class SelectedEntry {
+        final Identifier id;
+        final String displayName;
+        int weight;
+        SelectedEntry(Identifier id, String displayName, int weight) {
+            this.id = id; this.displayName = displayName; this.weight = weight;
         }
     }
 }

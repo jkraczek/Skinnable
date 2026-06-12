@@ -1,7 +1,9 @@
 package com.skinnable.fabric;
 
 import com.skinnable.client.renderer.CamouflageBlockEntityRenderer;
+import com.skinnable.client.screen.SkinnableCommandBlockScreen;
 import com.skinnable.client.screen.SkinnableSpawnerScreen;
+import com.skinnable.network.packet.S2COpenCommandBlockScreenPacket;
 import com.skinnable.network.packet.S2COpenSpawnerScreenPacket;
 import com.skinnable.registry.ModBlockEntityTypes;
 import net.fabricmc.api.ClientModInitializer;
@@ -18,7 +20,15 @@ public class SkinnableFabricClient implements ClientModInitializer {
 
         ClientPlayNetworking.registerGlobalReceiver(S2COpenSpawnerScreenPacket.TYPE, (packet, context) ->
             context.client().execute(() ->
-                context.client().setScreen(new SkinnableSpawnerScreen(packet.pos()))
+                context.client().setScreen(new SkinnableSpawnerScreen(packet.pos(),
+                        packet.entries(), packet.minDelay(), packet.maxDelay(),
+                        packet.spawnCount(), packet.maxNearby(), packet.playerRange()))
+            )
+        );
+
+        ClientPlayNetworking.registerGlobalReceiver(S2COpenCommandBlockScreenPacket.TYPE, (packet, context) ->
+            context.client().execute(() ->
+                context.client().setScreen(new SkinnableCommandBlockScreen(packet.pos(), packet.command(), packet.mode()))
             )
         );
     }

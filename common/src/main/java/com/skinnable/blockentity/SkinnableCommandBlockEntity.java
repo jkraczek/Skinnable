@@ -51,6 +51,11 @@ public class SkinnableCommandBlockEntity extends BlockEntity implements ICamoufl
         }
     }
 
+    @Override
+    public BlockState getDefaultCamouflage() {
+        return net.minecraft.world.level.block.Blocks.COMMAND_BLOCK.defaultBlockState();
+    }
+
     public BaseCommandBlock getCommandBlock() {
         return commandBlock;
     }
@@ -106,8 +111,16 @@ public class SkinnableCommandBlockEntity extends BlockEntity implements ICamoufl
 
     public static void serverTick(net.minecraft.world.level.Level level, BlockPos pos, BlockState state, SkinnableCommandBlockEntity be) {
         if (!(level instanceof ServerLevel serverLevel)) return;
-        if (be.mode == Mode.AUTO || (be.mode == Mode.REDSTONE && be.powered)) {
-            be.commandBlock.performCommand(serverLevel);
+        switch (be.mode) {
+            case AUTO -> be.commandBlock.performCommand(serverLevel);
+            case REDSTONE -> {
+                boolean nowPowered = level.hasNeighborSignal(pos);
+                if (nowPowered && !be.powered) {
+                    be.commandBlock.performCommand(serverLevel);
+                }
+                be.powered = nowPowered;
+            }
+            case SEQUENCE -> {} // not yet implemented
         }
     }
 

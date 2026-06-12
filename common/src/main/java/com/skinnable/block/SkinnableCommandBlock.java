@@ -2,8 +2,11 @@ package com.skinnable.block;
 
 import com.mojang.serialization.MapCodec;
 import com.skinnable.blockentity.SkinnableCommandBlockEntity;
+import com.skinnable.network.packet.S2COpenCommandBlockScreenPacket;
+import com.skinnable.platform.Services;
 import com.skinnable.registry.ModBlockEntityTypes;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
@@ -75,26 +78,15 @@ public class SkinnableCommandBlock extends BaseEntityBlock {
             return InteractionResult.SUCCESS;
         }
 
-        return InteractionResult.SUCCESS;
-    }
-
-    protected void neighborChanged(BlockState state, Level level, BlockPos pos, net.minecraft.world.level.block.Block block, net.minecraft.core.BlockPos fromPos, boolean isMoving) {
-        if (level.isClientSide()) return;
-        BlockEntity be = level.getBlockEntity(pos);
-        if (!(be instanceof SkinnableCommandBlockEntity cmdBe)) return;
-
-        boolean newPowered = level.hasNeighborSignal(pos);
-        boolean wasPowered = state.getValue(POWERED);
-
-        if (newPowered != wasPowered) {
-            level.setBlock(pos, state.setValue(POWERED, newPowered), 3);
-            cmdBe.setPowered(newPowered);
-
-            if (newPowered && cmdBe.getMode() == SkinnableCommandBlockEntity.Mode.REDSTONE
-                    && level instanceof net.minecraft.server.level.ServerLevel serverLevel) {
-                cmdBe.getCommandBlock().performCommand(serverLevel);
-            }
+        if (held.isEmpty() && player instanceof ServerPlayer sp) {
+            Services.PLATFORM.sendPacketToPlayer(sp, new S2COpenCommandBlockScreenPacket(
+                    pos,
+                    cmdBe.getCommandBlock().getCommand(),
+                    cmdBe.getMode().name()
+            ));
         }
+
+        return InteractionResult.SUCCESS;
     }
 
     @Override

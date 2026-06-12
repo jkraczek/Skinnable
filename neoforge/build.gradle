@@ -2,6 +2,10 @@ plugins {
     id 'net.neoforged.moddev'
 }
 
+base {
+    archivesName = "Skinnable-${mod_version}-neoforge-mc${minecraft_version}"
+}
+
 neoForge {
     version = "${neoforge_version}"
 
@@ -29,6 +33,11 @@ dependencies {
 
 jar {
     from project(':common').sourceSets.main.output
+    archiveVersion = ''
+}
+
+sourcesJar {
+    archiveVersion = ''
 }
 
 processResources {

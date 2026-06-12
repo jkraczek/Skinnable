@@ -69,7 +69,13 @@ public class SkinnableSpawnerBlock extends BaseEntityBlock {
         }
 
         if (player instanceof ServerPlayer sp) {
-            Services.PLATFORM.sendPacketToPlayer(sp, new S2COpenSpawnerScreenPacket(pos));
+            Services.PLATFORM.sendPacketToPlayer(sp, new S2COpenSpawnerScreenPacket(
+                    pos,
+                    spawnerBe.getSpawnEntries(),
+                    spawnerBe.getSpawnDelayMin(), spawnerBe.getSpawnDelayMax(),
+                    spawnerBe.getSpawnCount(), spawnerBe.getMaxNearbyEntities(),
+                    spawnerBe.getRequiredPlayerRange()
+            ));
         }
         return InteractionResult.SUCCESS;
     }

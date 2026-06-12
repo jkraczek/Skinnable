@@ -6,4 +6,6 @@ import org.jetbrains.annotations.Nullable;
 public interface ICamouflageBlockEntity {
     @Nullable BlockState getCamouflage();
     void setCamouflage(BlockState state);
+
+    default @Nullable BlockState getDefaultCamouflage() { return null; }
 }

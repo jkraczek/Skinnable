@@ -1,7 +1,11 @@
 package com.skinnable.registry;
 
+import com.skinnable.Skinnable;
 import com.skinnable.platform.Services;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 
@@ -15,12 +19,16 @@ public class ModItems {
         SKINNABLE_COMMAND_BLOCK = Services.PLATFORM.register(
                 BuiltInRegistries.ITEM.key(),
                 "skinnable_command_block",
-                () -> new BlockItem(ModBlocks.SKINNABLE_COMMAND_BLOCK.get(), new Item.Properties())
+                () -> new BlockItem(ModBlocks.SKINNABLE_COMMAND_BLOCK.get(),
+                        new Item.Properties().setId(ResourceKey.create(Registries.ITEM,
+                                Identifier.fromNamespaceAndPath(Skinnable.MOD_ID, "skinnable_command_block"))))
         );
         SKINNABLE_SPAWNER = Services.PLATFORM.register(
                 BuiltInRegistries.ITEM.key(),
                 "skinnable_spawner",
-                () -> new BlockItem(ModBlocks.SKINNABLE_SPAWNER.get(), new Item.Properties())
+                () -> new BlockItem(ModBlocks.SKINNABLE_SPAWNER.get(),
+                        new Item.Properties().setId(ResourceKey.create(Registries.ITEM,
+                                Identifier.fromNamespaceAndPath(Skinnable.MOD_ID, "skinnable_spawner"))))
         );
     }
 }

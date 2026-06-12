@@ -2,6 +2,10 @@ plugins {
     id 'net.fabricmc.fabric-loom'
 }
 
+base {
+    archivesName = "Skinnable-${mod_version}-fabric-mc${minecraft_version}"
+}
+
 dependencies {
     minecraft "com.mojang:minecraft:${minecraft_version}"
     compileOnly "net.fabricmc:fabric-loader:${fabric_loader_version}"
@@ -11,6 +15,11 @@ dependencies {
 
 jar {
     from project(':common').sourceSets.main.output
+    archiveVersion = ''
+}
+
+sourcesJar {
+    archiveVersion = ''
 }
 
 processResources {

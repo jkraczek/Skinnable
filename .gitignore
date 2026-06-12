@@ -14,3 +14,17 @@ Thumbs.db
 
 # Mod run directories
 runs/
+
+# Extracted Fabric API artifacts (end up in project root during loom processing)
+META-INF/
+assets/
+net/
+programmer_art/
+fabric.mod.json
+fabric-creative-tab-api-v1.classtweaker
+fabric-creative-tab-api-v1.client.mixins.json
+fabric-creative-tab-api-v1.mixins.json
+LICENSE-fabric-creative-tab-api-v1
+
+# Claude Code session data
+.claude/

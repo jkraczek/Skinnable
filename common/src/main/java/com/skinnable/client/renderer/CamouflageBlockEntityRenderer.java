@@ -36,6 +36,9 @@ public class CamouflageBlockEntityRenderer<T extends BlockEntity & ICamouflageBl
         BlockEntityRenderer.super.extractRenderState(entity, state, partialTick, camera, overlay);
         state.camo = null;
         BlockState camouflage = entity.getCamouflage();
+        if (camouflage == null || camouflage.isAir()) {
+            camouflage = entity.getDefaultCamouflage();
+        }
         if (camouflage == null || camouflage.isAir()) return;
         Level level = entity.getLevel();
         if (!(level instanceof ClientLevel clientLevel)) return;

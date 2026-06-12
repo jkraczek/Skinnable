@@ -55,6 +55,11 @@ public class SkinnableSpawnerBlockEntity extends BlockEntity implements ICamoufl
         }
     }
 
+    @Override
+    public BlockState getDefaultCamouflage() {
+        return net.minecraft.world.level.block.Blocks.SPAWNER.defaultBlockState();
+    }
+
     public List<SpawnEntry> getSpawnEntries() { return spawnEntries; }
     public int getSpawnDelayMin() { return spawnDelayMin; }
     public int getSpawnDelayMax() { return spawnDelayMax; }
@@ -162,13 +167,26 @@ public class SkinnableSpawnerBlockEntity extends BlockEntity implements ICamoufl
         if (nearbyCount >= be.maxNearbyEntities) return;
 
         for (int i = 0; i < be.spawnCount; i++) {
-            double spawnX = pos.getX() + (serverLevel.getRandom().nextDouble() - serverLevel.getRandom().nextDouble()) * 4 + 0.5;
-            double spawnY = pos.getY() + serverLevel.getRandom().nextInt(3) - 1;
-            double spawnZ = pos.getZ() + (serverLevel.getRandom().nextDouble() - serverLevel.getRandom().nextDouble()) * 4 + 0.5;
-            BlockPos spawnPos = BlockPos.containing(spawnX, spawnY, spawnZ);
-            entityType.spawn(serverLevel, spawnPos, EntitySpawnReason.SPAWNER);
+            BlockPos spawnPos = findValidSpawnPos(serverLevel, pos, serverLevel.getRandom());
+            if (spawnPos != null) {
+                entityType.spawn(serverLevel, spawnPos, EntitySpawnReason.SPAWNER);
+            }
         }
         be.setChanged();
+    }
+
+    @org.jetbrains.annotations.Nullable
+    private static BlockPos findValidSpawnPos(ServerLevel level, BlockPos center, RandomSource random) {
+        for (int attempt = 0; attempt < 10; attempt++) {
+            int dx = random.nextInt(9) - 4;
+            int dy = random.nextInt(5) - 2;
+            int dz = random.nextInt(9) - 4;
+            BlockPos candidate = center.offset(dx, dy, dz);
+            if (level.getBlockState(candidate).isAir() && level.getBlockState(candidate.above()).isAir()) {
+                return candidate;
+            }
+        }
+        return null;
     }
 
     private static Optional<Identifier> pickWeightedRandom(List<SpawnEntry> entries, RandomSource random) {

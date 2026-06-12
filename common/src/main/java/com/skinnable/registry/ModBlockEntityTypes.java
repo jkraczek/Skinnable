@@ -36,23 +36,31 @@ public class ModBlockEntityTypes {
     @SuppressWarnings({"unchecked", "JavaReflectionInvocation"})
     private static <T extends BlockEntity> BlockEntityType<T> createBlockEntityType(
             BiFunction<BlockPos, BlockState, T> factory, Block block) {
-        try {
-            var ctors = BlockEntityType.class.getDeclaredConstructors();
-            for (var ctor : ctors) {
-                if (ctor.getParameterCount() == 2) {
-                    ctor.setAccessible(true);
-                    Class<?> supplierInterface = ctor.getParameterTypes()[0];
-                    Object supplierProxy = Proxy.newProxyInstance(
-                        supplierInterface.getClassLoader(),
-                        new Class[]{supplierInterface},
-                        (proxy, method, args) -> factory.apply((BlockPos) args[0], (BlockState) args[1])
-                    );
-                    return (BlockEntityType<T>) ctor.newInstance(supplierProxy, Set.of(block));
-                }
+        Exception lastError = null;
+        for (var ctor : BlockEntityType.class.getDeclaredConstructors()) {
+            int paramCount = ctor.getParameterCount();
+            if (paramCount < 2) continue;
+            try {
+                ctor.setAccessible(true);
+                Class<?> supplierInterface = ctor.getParameterTypes()[0];
+                if (!supplierInterface.isInterface()) continue;
+                Object supplierProxy = Proxy.newProxyInstance(
+                    Thread.currentThread().getContextClassLoader(),
+                    new Class[]{supplierInterface},
+                    (proxy, method, args) -> {
+                        if (args != null && args.length >= 2)
+                            return factory.apply((BlockPos) args[0], (BlockState) args[1]);
+                        return null;
+                    }
+                );
+                Object[] args = new Object[paramCount];
+                args[0] = supplierProxy;
+                args[1] = Set.of(block);
+                return (BlockEntityType<T>) ctor.newInstance(args);
+            } catch (Exception e) {
+                lastError = e;
             }
-            throw new IllegalStateException("No suitable BlockEntityType constructor found");
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create BlockEntityType", e);
         }
+        throw new RuntimeException("Failed to create BlockEntityType", lastError);
     }
 }

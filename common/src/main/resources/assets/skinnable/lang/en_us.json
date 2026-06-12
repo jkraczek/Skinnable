@@ -14,5 +14,11 @@
   "screen.skinnable.max_nearby": "Max Nearby:",
   "screen.skinnable.player_range": "Player Range:",
   "screen.skinnable.save": "Save",
-  "screen.skinnable.cancel": "Cancel"
+  "screen.skinnable.cancel": "Cancel",
+  "screen.skinnable.command_block_config": "Command Block Configuration",
+  "screen.skinnable.command": "Command:",
+  "screen.skinnable.mode": "Mode:",
+  "screen.skinnable.mode_redstone": "Redstone",
+  "screen.skinnable.mode_auto": "Auto",
+  "screen.skinnable.mode_sequence": "Sequence"
 }
