@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "skinnable:item/skinnable_tnt"
+  }
+}

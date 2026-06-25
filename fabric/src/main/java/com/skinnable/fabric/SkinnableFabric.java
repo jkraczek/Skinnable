@@ -4,11 +4,14 @@ import com.skinnable.Skinnable;
 import com.skinnable.blockentity.ICamouflageBlockEntity;
 import com.skinnable.blockentity.SkinnableCommandBlockEntity;
 import com.skinnable.blockentity.SkinnableSpawnerBlockEntity;
+import com.skinnable.blockentity.SkinnableTNTBlockEntity;
 import com.skinnable.network.packet.C2SSaveCommandBlockPacket;
 import com.skinnable.network.packet.C2SSetCamouflagePacket;
 import com.skinnable.network.packet.C2SUpdateSpawnerPacket;
+import com.skinnable.network.packet.C2SUpdateTNTPacket;
 import com.skinnable.network.packet.S2COpenCommandBlockScreenPacket;
 import com.skinnable.network.packet.S2COpenSpawnerScreenPacket;
+import com.skinnable.network.packet.S2COpenTNTScreenPacket;
 import com.skinnable.registry.ModItems;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
@@ -29,6 +32,7 @@ public class SkinnableFabric implements ModInitializer {
                 Registries.CREATIVE_MODE_TAB,
                 Identifier.fromNamespaceAndPath(Skinnable.MOD_ID, "skinnable"));
         CreativeModeTabEvents.modifyOutputEvent(tabKey).register(output -> {
+            output.prepend(ModItems.SKINNABLE_TNT.get());
             output.prepend(ModItems.SKINNABLE_SPAWNER.get());
             output.prepend(ModItems.SKINNABLE_COMMAND_BLOCK.get());
         });
@@ -37,10 +41,12 @@ public class SkinnableFabric implements ModInitializer {
         PayloadTypeRegistry.serverboundPlay().register(C2SSetCamouflagePacket.TYPE, C2SSetCamouflagePacket.STREAM_CODEC);
         PayloadTypeRegistry.serverboundPlay().register(C2SUpdateSpawnerPacket.TYPE, C2SUpdateSpawnerPacket.STREAM_CODEC);
         PayloadTypeRegistry.serverboundPlay().register(C2SSaveCommandBlockPacket.TYPE, C2SSaveCommandBlockPacket.STREAM_CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(C2SUpdateTNTPacket.TYPE, C2SUpdateTNTPacket.STREAM_CODEC);
 
         // Clientbound packets
         PayloadTypeRegistry.clientboundPlay().register(S2COpenSpawnerScreenPacket.TYPE, S2COpenSpawnerScreenPacket.STREAM_CODEC);
         PayloadTypeRegistry.clientboundPlay().register(S2COpenCommandBlockScreenPacket.TYPE, S2COpenCommandBlockScreenPacket.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(S2COpenTNTScreenPacket.TYPE, S2COpenTNTScreenPacket.STREAM_CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(C2SSetCamouflagePacket.TYPE, (packet, context) ->
             context.server().execute(() -> {
@@ -73,6 +79,16 @@ public class SkinnableFabric implements ModInitializer {
                     cmdBe.getCommandBlock().setCommand(packet.command());
                     cmdBe.setChanged();
                     if (cmdBe.getLevel() instanceof ServerLevel sl) cmdBe.getCommandBlock().onUpdated(sl);
+                }
+            })
+        );
+
+        ServerPlayNetworking.registerGlobalReceiver(C2SUpdateTNTPacket.TYPE, (packet, context) ->
+            context.server().execute(() -> {
+                if (!context.player().getAbilities().instabuild) return;
+                var be = context.player().level().getBlockEntity(packet.pos());
+                if (be instanceof SkinnableTNTBlockEntity tntBe) {
+                    tntBe.setExplosionPower(packet.explosionPower());
                 }
             })
         );

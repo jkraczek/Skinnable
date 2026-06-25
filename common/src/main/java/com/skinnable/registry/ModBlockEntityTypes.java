@@ -2,6 +2,7 @@ package com.skinnable.registry;
 
 import com.skinnable.blockentity.SkinnableCommandBlockEntity;
 import com.skinnable.blockentity.SkinnableSpawnerBlockEntity;
+import com.skinnable.blockentity.SkinnableTNTBlockEntity;
 import com.skinnable.platform.Services;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -18,6 +19,7 @@ import java.util.function.Supplier;
 public class ModBlockEntityTypes {
     public static Supplier<BlockEntityType<SkinnableCommandBlockEntity>> SKINNABLE_COMMAND_BLOCK;
     public static Supplier<BlockEntityType<SkinnableSpawnerBlockEntity>> SKINNABLE_SPAWNER;
+    public static Supplier<BlockEntityType<SkinnableTNTBlockEntity>> SKINNABLE_TNT;
 
     @SuppressWarnings("unchecked")
     public static void init() {
@@ -30,6 +32,11 @@ public class ModBlockEntityTypes {
                 BuiltInRegistries.BLOCK_ENTITY_TYPE.key(),
                 "skinnable_spawner",
                 () -> createBlockEntityType(SkinnableSpawnerBlockEntity::new, ModBlocks.SKINNABLE_SPAWNER.get())
+        );
+        SKINNABLE_TNT = (Supplier<BlockEntityType<SkinnableTNTBlockEntity>>)(Supplier<?>) Services.PLATFORM.register(
+                BuiltInRegistries.BLOCK_ENTITY_TYPE.key(),
+                "skinnable_tnt",
+                () -> createBlockEntityType(SkinnableTNTBlockEntity::new, ModBlocks.SKINNABLE_TNT.get())
         );
     }
 

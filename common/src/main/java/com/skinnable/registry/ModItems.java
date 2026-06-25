@@ -14,6 +14,7 @@ import java.util.function.Supplier;
 public class ModItems {
     public static Supplier<Item> SKINNABLE_COMMAND_BLOCK;
     public static Supplier<Item> SKINNABLE_SPAWNER;
+    public static Supplier<Item> SKINNABLE_TNT;
 
     public static void init() {
         SKINNABLE_COMMAND_BLOCK = Services.PLATFORM.register(
@@ -29,6 +30,13 @@ public class ModItems {
                 () -> new BlockItem(ModBlocks.SKINNABLE_SPAWNER.get(),
                         new Item.Properties().setId(ResourceKey.create(Registries.ITEM,
                                 Identifier.fromNamespaceAndPath(Skinnable.MOD_ID, "skinnable_spawner"))))
+        );
+        SKINNABLE_TNT = Services.PLATFORM.register(
+                BuiltInRegistries.ITEM.key(),
+                "skinnable_tnt",
+                () -> new BlockItem(ModBlocks.SKINNABLE_TNT.get(),
+                        new Item.Properties().setId(ResourceKey.create(Registries.ITEM,
+                                Identifier.fromNamespaceAndPath(Skinnable.MOD_ID, "skinnable_tnt"))))
         );
     }
 }

@@ -1,8 +1,10 @@
 {
   "block.skinnable.skinnable_command_block": "Skinnable Command Block",
   "block.skinnable.skinnable_spawner": "Skinnable Spawner",
+  "block.skinnable.skinnable_tnt": "Skinnable TNT",
   "item.skinnable.skinnable_command_block": "Skinnable Command Block",
   "item.skinnable.skinnable_spawner": "Skinnable Spawner",
+  "item.skinnable.skinnable_tnt": "Skinnable TNT",
   "itemGroup.skinnable": "Skinnable",
   "screen.skinnable.spawner_config": "Skinnable Spawner Configuration",
   "screen.skinnable.search_entities": "Search entities...",
@@ -20,5 +22,6 @@
   "screen.skinnable.mode": "Mode:",
   "screen.skinnable.mode_redstone": "Redstone",
   "screen.skinnable.mode_auto": "Auto",
-  "screen.skinnable.mode_sequence": "Sequence"
+  "screen.skinnable.mode_sequence": "Sequence",
+  "screen.skinnable.tnt_config": "Skinnable TNT Configuration"
 }

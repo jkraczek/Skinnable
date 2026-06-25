@@ -1,6 +1,6 @@
 # Skinnable
 
-A Minecraft mod for Java 26.1.2 that lets you disguise command blocks and mob spawners as any vanilla block. Supports both **Fabric** and **NeoForge** loaders.
+A Minecraft mod for Java 26.1.2 that lets you disguise command blocks, mob spawners, and TNT as any vanilla block. Supports both **Fabric** and **NeoForge** loaders.
 
 ## Features
 
@@ -21,6 +21,16 @@ A Minecraft mod for Java 26.1.2 that lets you disguise command blocks and mob sp
   - Spawn count per cycle
   - Maximum nearby entities
   - Player activation range
+- Only breakable by players in creative mode
+
+### Skinnable TNT
+- Looks like any vanilla block of your choosing
+- **Right-click with a block item** (creative mode) — sets the disguise
+- **Right-click with empty hand** (creative mode) — opens the TNT configuration GUI
+- Configure via GUI:
+  - Explosion strength (1–100; vanilla TNT = 4)
+- Detonates when powered by redstone, hit by a fire arrow, or caught in another explosion
+- Chain explosions use a random short fuse, matching vanilla TNT behavior
 - Only breakable by players in creative mode
 
 ## Requirements

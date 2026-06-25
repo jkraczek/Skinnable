@@ -4,14 +4,18 @@ import com.skinnable.Skinnable;
 import com.skinnable.blockentity.ICamouflageBlockEntity;
 import com.skinnable.blockentity.SkinnableCommandBlockEntity;
 import com.skinnable.blockentity.SkinnableSpawnerBlockEntity;
+import com.skinnable.blockentity.SkinnableTNTBlockEntity;
 import com.skinnable.client.renderer.CamouflageBlockEntityRenderer;
 import com.skinnable.client.screen.SkinnableCommandBlockScreen;
 import com.skinnable.client.screen.SkinnableSpawnerScreen;
+import com.skinnable.client.screen.SkinnableTNTScreen;
 import com.skinnable.network.packet.C2SSaveCommandBlockPacket;
 import com.skinnable.network.packet.C2SSetCamouflagePacket;
 import com.skinnable.network.packet.C2SUpdateSpawnerPacket;
+import com.skinnable.network.packet.C2SUpdateTNTPacket;
 import com.skinnable.network.packet.S2COpenCommandBlockScreenPacket;
 import com.skinnable.network.packet.S2COpenSpawnerScreenPacket;
+import com.skinnable.network.packet.S2COpenTNTScreenPacket;
 import com.skinnable.neoforge.platform.NeoForgePlatformHelper;
 import com.skinnable.platform.Services;
 import com.skinnable.registry.ModBlockEntityTypes;
@@ -105,6 +109,26 @@ public class SkinnableNeoForge {
                     )
                 )
         );
+
+        registrar.playToServer(
+                C2SUpdateTNTPacket.TYPE,
+                C2SUpdateTNTPacket.STREAM_CODEC,
+                (packet, ctx) -> ctx.enqueueWork(() -> {
+                    if (!ctx.player().getAbilities().instabuild) return;
+                    var be = ctx.player().level().getBlockEntity(packet.pos());
+                    if (be instanceof SkinnableTNTBlockEntity tntBe) tntBe.setExplosionPower(packet.explosionPower());
+                })
+        );
+
+        registrar.playToClient(
+                S2COpenTNTScreenPacket.TYPE,
+                S2COpenTNTScreenPacket.STREAM_CODEC,
+                (packet, ctx) -> ctx.enqueueWork(() ->
+                    net.minecraft.client.Minecraft.getInstance().setScreen(
+                        new SkinnableTNTScreen(packet.pos(), packet.explosionPower())
+                    )
+                )
+        );
     }
 
     private void buildCreativeTab(BuildCreativeModeTabContentsEvent event) {
@@ -114,6 +138,7 @@ public class SkinnableNeoForge {
         if (event.getTabKey().equals(tabKey)) {
             event.accept(ModItems.SKINNABLE_COMMAND_BLOCK.get());
             event.accept(ModItems.SKINNABLE_SPAWNER.get());
+            event.accept(ModItems.SKINNABLE_TNT.get());
         }
     }
 
@@ -121,6 +146,8 @@ public class SkinnableNeoForge {
         event.registerBlockEntityRenderer(ModBlockEntityTypes.SKINNABLE_COMMAND_BLOCK.get(),
                 CamouflageBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntityTypes.SKINNABLE_SPAWNER.get(),
+                CamouflageBlockEntityRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntityTypes.SKINNABLE_TNT.get(),
                 CamouflageBlockEntityRenderer::new);
     }
 }
